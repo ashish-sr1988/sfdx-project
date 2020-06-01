@@ -46,4 +46,15 @@ node {
             println(rmsg)
         }
     }
+    post {
+
+    cleanup {
+        cleanWs()
+    }
+    always {
+        bat "sfdx force:auth:logout -u ${HUB_ORG} -p" 
+       
+       
+    }
+}
 }
