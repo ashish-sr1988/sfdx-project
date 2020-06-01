@@ -16,7 +16,7 @@ node {
     println HUB_ORG
     println SFDC_HOST
     println CONNECTED_APP_CONSUMER_KEY
-    def toolbelt = tool 'toolbelt'
+   
    
 
     stage('checkout source') {
@@ -26,31 +26,40 @@ node {
 
     withCredentials([file(credentialsId: JWT_KEY_CRED_ID, variable: 'jwt_key_file')]) {
 	    stage('Init stage'){
-	    hr = bat script: "\"${toolbelt}\" force:source:convert -r force-app -d ./src"
-
-	    }
-        stage('Deploye Code') {
             if (isUnix()) {
-                rc = sh returnStatus: true, script: "${toolbelt} force:auth:jwt:grant --clientid ${CONNECTED_APP_CONSUMER_KEY} --username ${HUB_ORG} --jwtkeyfile ${jwt_key_file} --setdefaultdevhubusername --instanceurl ${SFDC_HOST}"
-            }else{
-		 nc = bat returnStatus: true, script: "\"${toolbelt}\"force:auth:logout --targetusername ${HUB_ORG} -p" 
-                 rc = bat returnStatus: true, script: "\"${toolbelt}\" force:auth:jwt:grant --clientid ${CONNECTED_APP_CONSUMER_KEY} --username ${HUB_ORG} --jwtkeyfile \"${jwt_key_file}\" --setdefaultdevhubusername --instanceurl ${SFDC_HOST}"
+                println(' Convert SFDC Project to normal project')
+                srccode = sh returnStdout: true, script : "sfdx force:source:convert -r force-app -d ./src"
+            } else {
+                println(' Convert SFDC Project to normal project')
+                srccode = bat returnStdout: true, script : "sfdx force:source:convert -r force-app -d ./src"
             }
-            if (rc != 0) { error 'hub org authorization failed' }
+            println(srccode)
+        }
+        stage('Deploye Code') {
+              if (isUnix()) {
+                rc = sh returnStatus: true, script: "sfdx force:auth:jwt:grant --clientid ${CONNECTED_APP_CONSUMER_KEY} --username ${HUB_ORG} --jwtkeyfile ${jwt_key_file} -d --instanceurl ${SFDC_HOST}"
+            } else {
+                rc = bat returnStatus: true, script: "sfdx force:auth:jwt:grant --clientid ${CONNECTED_APP_CONSUMER_KEY} --username ${HUB_ORG} --jwtkeyfile \"${jwt_key_file}\" -d --instanceurl ${SFDC_HOST}"
+            }
+           
+            if (rc != 0) {
+                error 'hub org authorization failed'
+            }
 
 			println rc
 			
 			// need to pull out assigned username
-			if (isUnix()) {
-				rmsg = sh returnStdout: true, script: "${toolbelt} force:mdapi:deploy -d manifest/. -u ${HUB_ORG}"
-			}else{
-				
-			   rmsg = bat returnStdout: true, script: "\"${toolbelt}\" force:mdapi:deploy -d manifest/. -u ${HUB_ORG}"
-			}
+			 if(isUnix()){
+                println(' Deploy the code into Scratch ORG.')
+                sourcepush = sh returnStdout: true, script : "sfdx force:mdapi:deploy -d ./src -u ${HUB_ORG}"
+            }else{
+                println(' Deploy the code into Scratch ORG.')
+                sourcepush = bat returnStdout: true, script : "sfdx force:mdapi:deploy -d ./src -u ${HUB_ORG}"
+            }
 			  
-            printf rmsg
+            printf sourcepush
             println('Hello from a Job DSL script!')
-            println(rmsg)
+            println(sourcepush)
         }
     }
     post {
