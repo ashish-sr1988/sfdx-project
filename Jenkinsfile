@@ -17,7 +17,7 @@ node {
     println SFDC_HOST
     println CONNECTED_APP_CONSUMER_KEY
     def toolbelt = tool 'toolbelt'
-    sfdx force:auth:logout --targetusername ${HUB_ORG} -p
+   script: "\"${toolbelt}\" force:auth:logout --targetusername ${HUB_ORG} -p"
 
     stage('checkout source') {
         // when running in multi-branch job, one must issue this command
