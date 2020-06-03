@@ -1,6 +1,5 @@
-#!groovy
-import groovy.json.JsonSlurperClassic
-node {
+
+pipeline {
 
     def BUILD_NUMBER=env.BUILD_NUMBER
     def RUN_ARTIFACT_DIR="tests/${BUILD_NUMBER}"
@@ -17,7 +16,8 @@ node {
     println SFDC_HOST
     println CONNECTED_APP_CONSUMER_KEY
     def toolbelt = tool 'toolbelt'
-
+agent any
+    stages {
     stage('checkout source') {
         // when running in multi-branch job, one must issue this command
         checkout scm
@@ -73,6 +73,7 @@ node {
             println('Hello from a Job DSL script!')
             println(rmsg)
 	    }
+    }
         
     }
 }
