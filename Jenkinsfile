@@ -24,7 +24,7 @@ node {
     }
 
     withCredentials([file(credentialsId: JWT_KEY_CRED_ID, variable: 'jwt_key_file')]) {
-        stage('Deploye Code') {
+        stage('Authorize app') {
             if (isUnix()) {
                 rc = sh returnStatus: true, script: "${toolbelt} force:auth:jwt:grant --clientid ${CONNECTED_APP_CONSUMER_KEY} --username ${HUB_ORG} --jwtkeyfile ${jwt_key_file} --setdefaultdevhubusername --instanceurl ${SFDC_HOST}"
             }else{
@@ -33,7 +33,35 @@ node {
             if (rc != 0) { error 'hub org authorization failed' }
 
 			println rc
-			
+	}
+	            stage ("info") {
+            when {
+		        changeRequest()
+			}
+			steps {
+				powershell 'gci env:\\ | ft name,value -autosize'
+				
+                // add a ref to git config to make it aware of master
+                powershell '& git config --add remote.origin.fetch +refs/heads/master:refs/remotes/origin/master'
+				
+                // now fetch master so you can do a diff against it 
+                powershell '& git fetch --no-tags'
+				
+                // do the diff and set some variable based on the result
+                powershell '''
+					$DiffToMaster = & git diff --name-only origin/master..origin/$env:BRANCH_NAME
+					Switch ($DiffToMaster) {
+						'server-1607/base.json' {$env:PACK_BASE = $true}
+						'server-1607/basic.json' {$env:PACK_BASIC = $true}
+						'server-1607/algo.json' {$env:PACK_ALGO = $true}
+						'server-1607/build.json' {$env:PACK_BUILD = $true}
+						'server-1607/calc.json' {$env:PACK_CALC = $true}
+					}
+					gci env:/PACK_*
+				'''
+			}
+		}
+	    stage('Deploy Code'){
 			// need to pull out assigned username
 			if (isUnix()) {
 				rmsg = sh returnStdout: true, script: "${toolbelt} force:mdapi:deploy -d force-app/main/default/. -u ${HUB_ORG}"
@@ -44,6 +72,7 @@ node {
             printf rmsg
             println('Hello from a Job DSL script!')
             println(rmsg)
-        }
+	    }
+        
     }
 }
